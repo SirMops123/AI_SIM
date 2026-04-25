@@ -50,21 +50,21 @@ export type TimeOfDay =
 
 
 export interface AgentStats {
-    hunger: number;
-    thirst: number;
-    fatigue: number;
-    stress: number;
-    pain: number;
-    morale: number;
-    health: number;
-    intoxication: number;
+    hunger: number; // 0 = full 1 = starving
+    thirst: number; // 0 = full 1 = very thirsty
+    fatigue: number; // 0 = awake 1 = very tired
+    stress: number; // 0 = chill 1 = stressed out
+    pain: number; // 0 = no pain 1 = in great pain
+    morale: number; // 0 = hopeless 1 = euphoric
+    health: number; // 0 = almost dead 1 = healthy
+    intoxication: number // 0 = sober // 1 = high
 }
 
 export interface AgentEconomics {
     cash: number;
     debt: number;
     hasJob: boolean;
-    jobSatisfaction: number;
+    jobSatisfaction: number; // 0 = unsatisfied 1 = satisfied
     daysSinceIncome: number;
 }
 
@@ -79,14 +79,14 @@ export interface AgentInventory {
 
 export interface KnownAgent {
     id: string;
-    trustLevel: number;
+    trustLevel: number; // -1 = suspicious 0 = unknown 1 = trusted
     relationshipType: RelationshipType;
 }
 
 export interface AgentRelations {
     knownAgents: KnownAgent[];
     gangId?: string;
-    reputation: number;
+    reputation: number; // -1 = wanted 0 = doesnt matter 1 = popular
 }
 
 export interface AgentMemory {
@@ -129,8 +129,8 @@ export interface SimulationEnvironment {
     weather: Weather;
     temperature: number;
     district: string;
-    crimeRate: number;
-    policePresence: number;
+    crimeRate: number; // 0 = no crimes 1 = very criminal
+    policePresence: number; // 0 = no police 1 = highly alarmed police
     nearbyAgents: {agentId: string;
     distance: number;
     attitude: "friendly" | "neutral" | "hostile"}[]
@@ -143,7 +143,7 @@ export interface AgentDecision {
     target?: string;
     reasoning: string;
     emotionalState: string;
-    riskLevel: number;
+    riskLevel: number; // 0 = no risk 1 = high risk
     alternativeConsidered?: string;
 }
 
