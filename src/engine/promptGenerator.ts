@@ -191,3 +191,25 @@ export function buildEconomicContext(stats: AgentEconomics): string {
         ? prompt.join(" ")
         : "Deine Finanzen sind stabil und bieten dir Raum zum Atmen.";
 }
+
+const TRAIT_DESCRIPTIONS: Record<Trait, string> = {
+    impulsive: "Du handelst, bevor der Zweifel dich einholen kann; dein Instinkt ist schneller als jede Logik.",
+    calculating: "Die Welt ist ein Schachbrett; jeder Schritt ist abgewogen und dient einem langfristigen Ziel.",
+    empathetic: "Die Schmerzen und Hoffnungen deiner Mitmenschen hallen in dir wider wie deine eigenen.",
+    ruthless: "Gefühle sind Hindernisse; du tust, was getan werden muss, ungeachtet der Trümmer, die du hinterlässt.",
+    cowardly: "Überleben ist das höchste Gut; du spürst die Gefahr, lange bevor sie eintrifft, und suchst den Schatten.",
+    brave: "Deine Angst ist real, aber dein Wille, ihr entgegenzutreten, ist weitaus stärker.",
+    greedy: "Genug ist niemals genug; dein Blick wandert instinktiv zu allem, was von Wert ist und dir noch nicht gehört.",
+    altruistic: "Dein eigener Vorteil verblasst vor der Möglichkeit, das Leben eines anderen zu verbessern.",
+    paranoid: "Hinter jedem Lächeln verbirgt sich eine Dolchspitze; du traust nur deinem eigenen Schatten.",
+    charismatic: "Worte sind deine stärkste Waffe; die Menschen neigen dazu, dir zu glauben, einfach weil du es bist.",
+    antisocial: "Die Regeln der anderen bedeuten dir nichts; du bist ein einsamer Wolf in einer Welt voller Schafe.",
+    loyal: "Dein Wort ist ein unzerbrechlicher Eid; wer einmal dein Vertrauen hat, kann blind auf dich zählen."
+};
+
+export function buildPersonality(traits:Trait[]):string {
+    return traits.map(trait => TRAIT_DESCRIPTIONS[trait]).join(" ");
+}
+
+
+
