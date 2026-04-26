@@ -396,11 +396,97 @@ export function buildUserPrompt(ctx: LLMPromptContext): string {
     addSection("Was um dich herum passiert", buildEnvironment(ctx.environment, ctx.agent.isOutside));
 
     addSection("Warum du jetzt handeln musst", ctx.triggerReason);
-    
+
     const decisionPrompt = "Analysiere deine Situation und entscheide, was du als Nächstes tust. Handle strikt nach deinem Charakter und deinen Bedürfnissen. Deine Antwort muss ein valides JSON-Objekt sein.";
     addSection("Deine Entscheidung", decisionPrompt);
 
     return sections.join("\n\n");
+}
+
+
+export function checkThresholds(agent: Agent): { shouldTrigger: boolean; reason: string; urgency: number } {
+
+    if (agent.stats.hunger > 0.9) {
+        return {
+            shouldTrigger: true,
+            reason: "Dein Körper verzehrt sich selbst vor Hunger; du stehst kurz vor dem physischen Zusammenbruch.",
+            urgency: 1.0
+        };
+    }
+
+    if (agent.stats.thirst > 0.9) {
+        return {
+            shouldTrigger: true,
+            reason: "Deine Kehle ist wie zugeschnürt; ohne sofortige Flüssigkeit wirst du die nächsten Stunden nicht überleben.",
+            urgency: 1.0
+        };
+    }
+
+    if (agent.stats.pain > 0.9) {
+        return {
+            shouldTrigger: true,
+            reason: "Dein Lebenslicht flackert nur noch schwach; jede Bewegung könnte deine letzte sein.",
+            urgency: 0.95
+        };
+    }
+
+    if (agent.stats.hunger > 0.75) {
+        return {
+            shouldTrigger: true,
+            reason: "Der Hunger peitscht dich unerbittlich voran; du musst jetzt dringend eine Quelle für Nahrung finden.",
+            urgency: 0.8
+        };
+    }
+
+    if (agent.stats.stress > 0.85) {
+        return {
+            shouldTrigger: true,
+            reason: "Dein Verstand droht unter dem immensen Druck zu zerbrechen; du stehst kurz vor einem totalen Nervenzusammenbruch.",
+            urgency: 0.75
+        };
+    }
+
+    if (agent.economics.cash < 0 && agent.economics.daysSinceIncome > 5) {
+        return {
+            shouldTrigger: true,
+            reason: "Deine finanzielle Lage ist katastrophal; ohne Bargeld und seit Tagen ohne Einkommen ist dein Überleben nicht mehr gesichert.",
+            urgency: 0.7
+        };
+    }
+
+    if (agent.stats.fatigue > 0.85) {
+        return {
+            shouldTrigger: true,
+            reason: "Totale Erschöpfung vernebelt deine Sinne; du kannst dich kaum noch auf den Beinen halten.",
+            urgency: 0.5
+        };
+    }
+
+    return { shouldTrigger: false, reason: "", urgency: 0 };
+}
+
+export function parseDecision(rawJson: string): AgentDecision | null {
+    const match = rawJson.match(/\{[\s\S]*\}/);
+    if (!match) {
+        return null;
+    }
+
+    try{
+        const jsonString = match[0];
+
+        const parsed = JSON.parse(jsonString);
+
+        return {
+            action: parsed.action,
+            target: parsed.target,
+            reasoning: parsed.reasoning,
+            emotionalState: parsed.emotionalState,
+            riskLevel: parsed.riskLevel,
+            alternativeConsidered: parsed.alternativeConsidered
+        };
+    }catch(error){
+        return null;
+    }
 }
 
 
