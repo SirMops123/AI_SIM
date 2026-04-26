@@ -109,6 +109,7 @@ export interface Agent {
     inventory: AgentInventory;
     relations: AgentRelations;
     memory: AgentMemory;
+    isOutside: boolean;
 }
 
 export interface EnvironmentObject {

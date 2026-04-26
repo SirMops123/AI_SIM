@@ -1,4 +1,4 @@
-import type {Agent} from "../types/agent.ts";
+import type {Agent, TimeOfDay, Weather} from "../types/agent.ts";
 import type {AgentStats} from "../types/agent.ts";
 import type {AgentEconomics} from "../types/agent.ts";
 import type {SimulationEnvironment} from "../types/agent.ts";
@@ -211,5 +211,82 @@ export function buildPersonality(traits:Trait[]):string {
     return traits.map(trait => TRAIT_DESCRIPTIONS[trait]).join(" ");
 }
 
+const TIMEOFDAY_DESCRIPTIONS: Record<TimeOfDay, string> = {
+    dawn: "Ein fahler, bläulicher Schimmer kriecht über den Horizont; die Welt erwacht in einer klammen, erwartungsvollen Stille.",
+    morning: "Das Licht ist klar und unverbraucht; überall herrscht geschäftiges Treiben und die Luft riecht nach Aufbruch.",
+    noon: "Die Sonne steht unerbittlich am höchsten Punkt; Schatten schrumpfen zusammen und die Hitze drückt schwer auf die Straßen.",
+    afternoon: "Das Licht wird goldener und weicher; die erste Energie des Tages weicht einer trägen, fast schläfrigen Ruhe.",
+    evening: "Lange Schatten strecken ihre Finger aus; die Welt taucht in ein tiefes Orange, während die Hektik langsam abebbt.",
+    night: "Die Dunkelheit hat alles im Griff; künstliche Lichter flackern auf und die vertrauten Geräusche weichen einer geheimnisvollen Unruhe.",
+    deep_night: "In der absoluten Schwärze scheint die Zeit stillzustehen; nur das Echo ferner Ereignisse hallt durch die schlafende Stadt."
+};
+
+const WEATHER_DESCRIPTIONS_OUTSIDE: Record<Weather, string> = {
+    clear: "Der Himmel ist weit und wolkenlos; das Licht fällt ungehindert herab.",
+    rain: "Kühler Regen fällt unaufhörlich auf dich herab und durchnässt die Umgebung.",
+    storm: "Heulender Wind und peitschender Regen zerren an deiner Kleidung und behindern jede Bewegung.",
+    snow: "Dichte Flocken fallen lautlos herab und verwandeln die Welt in eine weiße, klirrende Kälte.",
+    heatwave: "Die stehende Hitze brennt auf deiner Haut und lässt die Luft bei jedem Atemzug flimmern."
+};
+
+const WEATHER_DESCRIPTIONS_INSIDE: Record<Weather, string> = {
+    clear: "Durch die Fenster fällt helles, ungetrübtes Licht; draußen scheint ein schöner Tag zu sein.",
+    rain: "Das monotone Trommeln des Regens gegen die Wände und Fenster erzeugt eine gedämpfte Atmosphäre.",
+    storm: "Der Wind rüttelt an den Mauern und das Prasseln des Sturms draußen lässt den Raum sicherer wirken.",
+    snow: "Draußen ist die Welt in ein helles Weiß getaucht; die Kälte bleibt hinter den Wänden ausgesperrt.",
+    heatwave: "Trotz der Mauern ist die drückende Schwüle von draußen auch hier drin deutlich zu spüren."
+};
+
+export function buildEnvironment(env:SimulationEnvironment,isOutside:boolean):string {
+    const prompt: string[] = [];
+
+    const timeText = TIMEOFDAY_DESCRIPTIONS[env.timeOfDay]
+
+    const weatherText = isOutside
+        ? WEATHER_DESCRIPTIONS_OUTSIDE[env.weather]
+        : WEATHER_DESCRIPTIONS_INSIDE[env.weather];
+     prompt.push([timeText,weatherText].join(" "));
+
+     if(isOutside) {
+         if (env.temperature < 0) {
+             prompt.push(`Die beißende Kälte von ${env.temperature}°C lässt alles erstarren.`);
+         } else if (env.temperature > 35) {
+             prompt.push(`Die extreme Hitze von ${env.temperature}°C drückt schwer auf die Umgebung.`);
+         }
+     }
+     if(env.district) {
+         prompt.push(`Die Straßen von ${env.district} erstrecken sich um dich herum.`);
+     }
+
+    if (env.policePresence > 0.7){
+        prompt.push("Die Luft vibriert von Blaulicht; die Polizei hat das Gebiet mit einer bedrückenden Präsenz abgeriegelt.");
+    } else if (env.policePresence < 0.15){
+        prompt.push("Es ist auffallend still hier; kein einziger Gesetzeshüter scheint sich in diese Gegend zu trauen.");
+    }
+    const objectDescriptions = env.nearbyObjects.map(obj => {
+        const lockStatus = obj.isLocked ? "verschlossen" : "zugänglich";
+        const occupation = obj.isOccupied ? "wird jedoch gerade beansprucht" : " und scheint momentan frei zu sein";
+
+        return `In deiner Nähe befindet sich ein ${obj.label}; es ist ${lockStatus}, ${occupation}.`;
+    })
+
+    prompt.push(...objectDescriptions)
+
+    const hostileCount = env.nearbyAgents.filter(a => a.attitude === "hostile").length;
+    const friendlyCount = env.nearbyAgents.filter(a => a.attitude === "friendly").length;
+
+    if (hostileCount > 0) {
+        const word = hostileCount === 1 ? "eine feindselige Gestalt beobachtet" : `${hostileCount} feindselige Gestalten beobachten`;
+        prompt.push(`Du spürst Blicke im Rücken – ${word} dich lauernd.`);
+    }
+    if (friendlyCount > 0) {
+        const word = friendlyCount === 1 ? "ein vertrautes Gesicht" : `${friendlyCount} vertraute Gesichter`;
+        prompt.push(`Unter den Passanten entdeckst du ${word}, was die Lage etwas mildert.`);
+    }
+    if(env.activeEvents.length > 0) {
+        prompt.push(`Die Atmosphäre wird von aktuellen Ereignissen geprägt: ${env.activeEvents.join(", ")}.`);
+    }
+    return prompt.filter(s => s !== "").join(" ");
+}
 
 
