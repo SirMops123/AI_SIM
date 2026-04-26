@@ -60,3 +60,15 @@ export async function requestDecision(ctx: LLMPromptContext): Promise<AgentDecis
         alternativeConsidered: "weiterhin versuchen zu handeln"
     };
 }
+
+export async function checkOllamaConnection(): Promise<boolean> {
+    try {
+        const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`, {
+            method: "GET",
+        })
+
+        return response.ok;
+    } catch (err) {
+        return false;
+    }
+}
