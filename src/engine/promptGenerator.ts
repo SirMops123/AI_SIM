@@ -1,4 +1,4 @@
-import type {Agent, TimeOfDay, Weather} from "../types/agent.ts";
+import type {Agent, AgentInventory, TimeOfDay, Weather} from "../types/agent.ts";
 import type {AgentStats} from "../types/agent.ts";
 import type {AgentEconomics} from "../types/agent.ts";
 import type {SimulationEnvironment} from "../types/agent.ts";
@@ -332,6 +332,75 @@ Das Format deiner Entscheidung:
 }`;
 }
 
+export function buildInventory(inv: AgentInventory): string {
+    const prompt: string[] = [];
 
+    if (inv.tools.length > 0) {
+        prompt.push(`In deinem Gepäck finden sich nützliche Utensilien, die dir den Alltag erleichtern: ${inv.tools.join(", ")}.`);
+    }
+
+    if (inv.weapons.length > 0) {
+        prompt.push(`Du bist nicht wehrlos; du trägst ${inv.weapons.join(", ")} griffbereit bei dir, um dich im Ernstfall zu verteidigen.`);
+    }
+
+    if (inv.food === 0) {
+        prompt.push("Dein Magen knurrt und deine Vorräte sind vollkommen erschöpft – ohne baldige Nahrung rückt das Ende unaufhaltsam näher.");
+    } else if (inv.food <= 5) {
+        prompt.push(`Die Reste deines Proviants sind auf kümmerliche ${inv.food} Stücke geschrumpft, was kaum für den nächsten Tag reichen wird.`);
+    } else {
+        prompt.push(`Mit ${inv.food} Portionen Essen im Gepäck bist du vorerst gut versorgt und musst dir um die nächste Mahlzeit keine Sorgen machen.`);
+    }
+
+    if (inv.water === 0) {
+        prompt.push("Deine Kehle ist staubtrocken und du besitzt keinen einzigen Tropfen Wasser mehr, um deinen Durst zu stillen.");
+    } else if (inv.water <= 5) {
+        prompt.push(`Deine Vorräte an Trinkbarem gehen zur Neige; die verbleibenden ${inv.water} Einheiten musst du dir ab jetzt gut einteilen.`);
+    } else {
+        prompt.push(`Trinken ist aktuell dein geringstes Problem, da du noch über ${inv.water} Einheiten an Flüssigkeit verfügst.`);
+    }
+
+    if (inv.valuables === 0) {
+        prompt.push("Du besitzt absolut nichts von materiellem Wert; deine Taschen sind leer und dein Reichtum ist nicht existent.");
+    } else if (inv.valuables <= 5) {
+        prompt.push(`Du hast ${inv.valuables} wertvolle Gegenstände bei dir – kein Vermögen, aber genug, um in einer Notlage zu verhandeln.`);
+    } else {
+        prompt.push(`Mit ${inv.valuables} Wertsachen in deinem Besitz stehst du finanziell äußerst stabil da.`);
+    }
+
+    if (inv.drugs.length > 0) {
+        prompt.push(`In einem verborgenen Fach deiner Kleidung führst du illegale Substanzen mit dir, die dir gefährlich werden könnten: ${inv.drugs.join(", ")}.`);
+    }
+
+    return prompt.filter(str => str !== "").join(" ");
+}
+
+export function buildUserPrompt(ctx: LLMPromptContext): string {
+    const sections: string[] = [];
+
+    const addSection = (title: string, content: string) => {
+        if (content && content.trim().length > 0) {
+            sections.push(`## ${title}\n${content}`);
+        }
+    };
+
+    addSection("Wer du bist", buildBackstory(ctx.agent));
+
+    addSection("Deine Persönlichkeit", buildPersonality(ctx.agent.traits));
+
+    addSection("Dein körperlicher Zustand", buildPhysicalState(ctx.agent.stats));
+
+    addSection("Deine wirtschaftliche Lage", buildEconomicContext(ctx.agent.economics));
+
+    addSection("Was du bei dir trägst", buildInventory(ctx.agent.inventory));
+
+    addSection("Was um dich herum passiert", buildEnvironment(ctx.environment, ctx.agent.isOutside));
+
+    addSection("Warum du jetzt handeln musst", ctx.triggerReason);
+    
+    const decisionPrompt = "Analysiere deine Situation und entscheide, was du als Nächstes tust. Handle strikt nach deinem Charakter und deinen Bedürfnissen. Deine Antwort muss ein valides JSON-Objekt sein.";
+    addSection("Deine Entscheidung", decisionPrompt);
+
+    return sections.join("\n\n");
+}
 
 
