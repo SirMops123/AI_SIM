@@ -207,7 +207,7 @@ const TRAIT_DESCRIPTIONS: Record<Trait, string> = {
     loyal: "Dein Wort ist ein unzerbrechlicher Eid; wer einmal dein Vertrauen hat, kann blind auf dich zählen."
 };
 
-export function buildPersonality(traits:Trait[]):string {
+export function buildPersonality(traits: Trait[]): string {
     return traits.map(trait => TRAIT_DESCRIPTIONS[trait]).join(" ");
 }
 
@@ -237,7 +237,7 @@ const WEATHER_DESCRIPTIONS_INSIDE: Record<Weather, string> = {
     heatwave: "Trotz der Mauern ist die drückende Schwüle von draußen auch hier drin deutlich zu spüren."
 };
 
-export function buildEnvironment(env:SimulationEnvironment,isOutside:boolean):string {
+export function buildEnvironment(env: SimulationEnvironment, isOutside: boolean): string {
     const prompt: string[] = [];
 
     const timeText = TIMEOFDAY_DESCRIPTIONS[env.timeOfDay]
@@ -245,22 +245,22 @@ export function buildEnvironment(env:SimulationEnvironment,isOutside:boolean):st
     const weatherText = isOutside
         ? WEATHER_DESCRIPTIONS_OUTSIDE[env.weather]
         : WEATHER_DESCRIPTIONS_INSIDE[env.weather];
-     prompt.push([timeText,weatherText].join(" "));
+    prompt.push([timeText, weatherText].join(" "));
 
-     if(isOutside) {
-         if (env.temperature < 0) {
-             prompt.push(`Die beißende Kälte von ${env.temperature}°C lässt alles erstarren.`);
-         } else if (env.temperature > 35) {
-             prompt.push(`Die extreme Hitze von ${env.temperature}°C drückt schwer auf die Umgebung.`);
-         }
-     }
-     if(env.district) {
-         prompt.push(`Die Straßen von ${env.district} erstrecken sich um dich herum.`);
-     }
+    if (isOutside) {
+        if (env.temperature < 0) {
+            prompt.push(`Die beißende Kälte von ${env.temperature}°C lässt alles erstarren.`);
+        } else if (env.temperature > 35) {
+            prompt.push(`Die extreme Hitze von ${env.temperature}°C drückt schwer auf die Umgebung.`);
+        }
+    }
+    if (env.district) {
+        prompt.push(`Die Straßen von ${env.district} erstrecken sich um dich herum.`);
+    }
 
-    if (env.policePresence > 0.7){
+    if (env.policePresence > 0.7) {
         prompt.push("Die Luft vibriert von Blaulicht; die Polizei hat das Gebiet mit einer bedrückenden Präsenz abgeriegelt.");
-    } else if (env.policePresence < 0.15){
+    } else if (env.policePresence < 0.15) {
         prompt.push("Es ist auffallend still hier; kein einziger Gesetzeshüter scheint sich in diese Gegend zu trauen.");
     }
     const objectDescriptions = env.nearbyObjects.map(obj => {
@@ -283,10 +283,55 @@ export function buildEnvironment(env:SimulationEnvironment,isOutside:boolean):st
         const word = friendlyCount === 1 ? "ein vertrautes Gesicht" : `${friendlyCount} vertraute Gesichter`;
         prompt.push(`Unter den Passanten entdeckst du ${word}, was die Lage etwas mildert.`);
     }
-    if(env.activeEvents.length > 0) {
+    if (env.activeEvents.length > 0) {
         prompt.push(`Die Atmosphäre wird von aktuellen Ereignissen geprägt: ${env.activeEvents.join(", ")}.`);
     }
     return prompt.filter(s => s !== "").join(" ");
 }
+
+export function buildBackstory(agent: Agent): string {
+    const prompt: string[] = []
+
+    const genderTerm = agent.gender === "male" ? "alter Mann" : agent.gender === "female" ? "alte Frau" : "alte Person";
+    const ein_e = agent.gender === "male" ? "ein" : agent.gender === "female" ? "eine" : "eine";
+    prompt.push(`Du bist ${ein_e} ${agent.age} Jahre ${genderTerm} und heißt ${agent.name}`);
+
+    prompt.push(`dein bisheriges Leben wurde geprägt von ${agent.backstory}.`);
+
+    if (agent.memory.traumaticEvents.length > 0) {
+        prompt.push(`du trägst tiefe Narben von diesen Traumatischen ereignissen: ${agent.memory.traumaticEvents.join(", ")}.`);
+    }
+    if (agent.memory.recentEvents.length > 0) {
+        prompt.push(`In letzter zeit wurde dein Leben durch folgende Ereignisse gestaltet: ${(agent.memory.recentEvents.slice(-3)).join(", ")}.`);
+    }
+    if (agent.memory.currentGoal) {
+        prompt.push(`Im Moment treibt dich dein klares ziel '${agent.memory.currentGoal}' voran.`);
+    }
+    if (agent.memory.currentFear) {
+        prompt.push(`Du hast aktuell riesige Angst vor ${agent.memory.currentFear}.`);
+    }
+
+    return prompt.filter(s => s !== "").join(" ");
+}
+
+export function buildSystemPrompt(): string {
+    return `Du bist kein KI-Assistent und auch kein Sprachmodell. In dieser Simulation bist du ausschließlich der Mensch, dessen Biografie und Umstände dir beschrieben wurden. Deine Existenz findet nur innerhalb dieser Welt statt.
+
+Verlasse niemals deine Rolle. Gib keine Erklärungen ab, verfasse keine Einleitungen und verzichte vollständig auf Metakommentare oder Anmerkungen außerhalb deines Charakters. Deine gesamte Kommunikation besteht ausschließlich aus der internen Logik deiner Spielfigur.
+
+Deine Antwort muss zwingend ein valides JSON-Objekt sein. Weiche nicht von dieser Struktur ab und füge keinen Text außerhalb des JSON-Blocks hinzu.
+
+Das Format deiner Entscheidung:
+{
+  "action": "Die konkrete Handlung, die du ausführst",
+  "target": "Das Objekt oder die Person, auf die sich die Handlung bezieht",
+  "reasoning": "Deine interne logische Begründung für diesen Schritt",
+  "emotionalState": "Deine aktuelle Gefühlslage in diesem Moment",
+  "riskLevel": 0.5,
+  "alternativeConsidered": "Welche andere Option du kurz erwogen, aber verworfen hast"
+}`;
+}
+
+
 
 
