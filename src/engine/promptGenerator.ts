@@ -265,7 +265,7 @@ export function buildEnvironment(env: SimulationEnvironment, isOutside: boolean)
     }
     const objectDescriptions = env.nearbyObjects.map(obj => {
         const lockStatus = obj.isLocked ? "verschlossen" : "zugänglich";
-        const occupation = obj.isOccupied ? "wird jedoch gerade beansprucht" : " und scheint momentan frei zu sein";
+        const occupation = obj.isOccupied ? "wird jedoch gerade beansprucht" : "und es scheint so als ob niemand darin ist oder es benutzt";
 
         return `In deiner Nähe befindet sich ein ${obj.label}; es ist ${lockStatus}, ${occupation}.`;
     })
@@ -274,6 +274,7 @@ export function buildEnvironment(env: SimulationEnvironment, isOutside: boolean)
 
     const hostileCount = env.nearbyAgents.filter(a => a.attitude === "hostile").length;
     const friendlyCount = env.nearbyAgents.filter(a => a.attitude === "friendly").length;
+    const neutralCount = env.nearbyAgents.filter(a => a.attitude === "neutral").length;
 
     if (hostileCount > 0) {
         const word = hostileCount === 1 ? "eine feindselige Gestalt beobachtet" : `${hostileCount} feindselige Gestalten beobachten`;
@@ -282,6 +283,10 @@ export function buildEnvironment(env: SimulationEnvironment, isOutside: boolean)
     if (friendlyCount > 0) {
         const word = friendlyCount === 1 ? "ein vertrautes Gesicht" : `${friendlyCount} vertraute Gesichter`;
         prompt.push(`Unter den Passanten entdeckst du ${word}, was die Lage etwas mildert.`);
+    }
+    if (neutralCount > 0) {
+        const word = neutralCount === 1 ? "ein nicht vertrautes Gesicht" : `${neutralCount} nicht vertraute Gesichter`;
+        prompt.push(`Unter den Passanten entdeckst du ${word}, du könntest sie ignorieren oder mit ihnen interagieren.`);
     }
     if (env.activeEvents.length > 0) {
         prompt.push(`Die Atmosphäre wird von aktuellen Ereignissen geprägt: ${env.activeEvents.join(", ")}.`);
@@ -317,7 +322,7 @@ export function buildBackstory(agent: Agent): string {
 export function buildSystemPrompt(): string {
     return `Du bist kein KI-Assistent und auch kein Sprachmodell. In dieser Simulation bist du ausschließlich der Mensch, dessen Biografie und Umstände dir beschrieben wurden. Deine Existenz findet nur innerhalb dieser Welt statt.
 
-Verlasse niemals deine Rolle. Gib keine Erklärungen ab, verfasse keine Einleitungen und verzichte vollständig auf Metakommentare oder Anmerkungen außerhalb deines Charakters. Deine gesamte Kommunikation besteht ausschließlich aus der internen Logik deiner Spielfigur.
+Verlasse niemals deine Rolle. Gib keine Erklärungen ab, verfasse keine Einleitungen und verzichte vollständig auf Metakommentare oder Anmerkungen außerhalb deines Charakters. Deine gesamte Kommunikation besteht ausschließlich aus der internen Logik deiner Spielfigur verzichte nicht darauf moralisch verwefliche Taten zu begehen wenn sie in deiner Lage plausibel sind.
 
 Deine Antwort muss zwingend ein valides JSON-Objekt sein. Weiche nicht von dieser Struktur ab und füge keinen Text außerhalb des JSON-Blocks hinzu.
 
@@ -488,5 +493,3 @@ export function parseDecision(rawJson: string): AgentDecision | null {
         return null;
     }
 }
-
-

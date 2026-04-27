@@ -1,5 +1,3 @@
-
-
 export type Trait =
     | "impulsive"
     | "calculating"
@@ -13,6 +11,49 @@ export type Trait =
     | "charismatic"
     | "antisocial"
     | "loyal"
+    | "sadistic"
+    | "masochistic"
+    | "vindictive"
+    | "nihilistic"
+    | "manipulative"
+    | "deceitful"
+    | "volatile"
+    | "cruel"
+    | "obsessive"
+    | "predatory"
+    | "jealous"
+    | "romantic"
+    | "flirtatious"
+    | "possessive"
+    | "submissive"
+    | "dominant"
+    | "codependent"
+    | "people_pleasing"
+    | "attention_seeking"
+    | "righteous"
+    | "hypocritical"
+    | "opportunistic"
+    | "principled"
+    | "corrupt"
+    | "self_righteous"
+    | "dissociative"
+    | "delusional"
+    | "narcissistic"
+    | "borderline"
+    | "avoidant"
+    | "dependent"
+    | "disciplined"
+    | "patient"
+    | "curious"
+    | "creative"
+    | "stoic"
+    | "adaptable"
+    | "humorous"
+    | "nostalgic"
+    | "spiritual"
+    | "idealistic"
+    | "pessimistic"
+    | "optimistic";
 
 export type Skill =
     | "stealth"
@@ -23,6 +64,34 @@ export type Skill =
     | "crafting"
     | "survival"
     | "hacking"
+    | "seduction"
+    | "intimidation"
+    | "leadership"
+    | "manipulation"
+    | "acting"
+    | "negotiation"
+    | "networking"
+    | "teaching"
+    | "driving"
+    | "cooking"
+    | "gambling"
+    | "lockpicking"
+    | "weapons_handling"
+    | "explosives"
+    | "forging"
+    | "pickpocketing"
+    | "investigation"
+    | "psychology"
+    | "law"
+    | "chemistry"
+    | "engineering"
+    | "streetwise"
+    | "athletics"
+    | "endurance"
+    | "climbing"
+    | "swimming"
+    | "shooting"
+    | "martial_arts";
 
 export type RelationshipType =
     | "stranger"
@@ -60,6 +129,59 @@ export interface AgentStats {
     intoxication: number // 0 = sober // 1 = high
 }
 
+export type ConditionType =
+    | "depression"
+    | "bipolar"
+    | "dysthymia"
+    | "cyclothymia"
+    | "generalized_anxiety"
+    | "panic_disorder"
+    | "social_anxiety"
+    | "ptsd"
+    | "ocd"
+    | "specific_phobia"
+    | "borderline_personality"
+    | "narcissistic_personality"
+    | "antisocial_personality"
+    | "paranoid_personality"
+    | "schizoid_personality"
+    | "histrionic_personality"
+    | "schizophrenia"
+    | "schizoaffective"
+    | "brief_psychotic"
+    | "alcohol_dependency"
+    | "drug_dependency"
+    | "gambling_addiction"
+    | "sex_addiction"
+    | "adhd"
+    | "autism_spectrum"
+    | "dissociative_identity"
+    | "eating_disorder"
+    | "impulse_control_disorder";
+
+export type SexualOrientation =
+    | "heterosexual"
+    | "homosexual"
+    | "bisexual"
+    | "pansexual"
+    | "asexual"
+    | "demisexual"
+
+export interface MentalCondition {
+    condition: ConditionType;
+    severity: number; // 0 - 1 schweregrad
+    isMedicated: boolean;
+    triggerConditions: string[];
+}
+
+export interface Addiction {
+    substance: string;
+    dependencyLevel: number; // 0-1
+    daysSinceLastUsed: number;
+    withdrawalSeverity: number; // 0-1
+    triggeredBy: string[]; //liste von situationen die Sucht auslösen
+}
+
 export interface AgentEconomics {
     cash: number;
     debt: number;
@@ -77,17 +199,6 @@ export interface AgentInventory {
     valuables: number;
 }
 
-export interface KnownAgent {
-    id: string;
-    trustLevel: number; // -1 = suspicious 0 = unknown 1 = trusted
-    relationshipType: RelationshipType;
-}
-
-export interface AgentRelations {
-    knownAgents: KnownAgent[];
-    gangId?: string;
-    reputation: number; // -1 = wanted 0 = doesnt matter 1 = popular
-}
 
 export interface AgentMemory {
     recentEvents: string[];
@@ -96,6 +207,20 @@ export interface AgentMemory {
     currentFear?: string;
 }
 
+export interface AgentBody {
+    height: number; // in cm
+    weight: number; // in kg
+    fitnessLevel: number; // 0 - 1
+    attractiveness: number; // 0 - 1
+    visibleScars: boolean;
+    visibleTattos: boolean;
+    disabilities: string[];
+    chronicConditions: string[];
+    lastSlept: number;
+    lastAte: number;
+}
+
+
 export interface Agent {
     id: string;
     name: string;
@@ -103,14 +228,73 @@ export interface Agent {
     gender: "male" | "female" | "other";
     backstory: string;
     traits: Trait[];
-    skills: Partial<Record<Skill,number>>
+    skills: Partial<Record<Skill, number>>
     stats: AgentStats;
     economics: AgentEconomics;
     inventory: AgentInventory;
     relations: AgentRelations;
     memory: AgentMemory;
     isOutside: boolean;
+    sexualOrientation: SexualOrientation;
+    libido: number; // 0 - 1
+    lastIntimateContact: number;
+    body: AgentBody;
+    family: AgentFamily;
+    housing: AgentHousing;
+    goals: AgentGoals;
+    conditions?: MentalCondition[];
+    addiction?: Addiction[];
+
 }
+
+export interface KnownAgent extends Partial<Agent> {
+    id: string;
+    name: string;
+    gender: "male" | "female" | "other";
+    romanticHistory: "none" | "childhood_crush" | "crush" | "dated_briefly" | "relationship" | "longterm_relationship" | "heartbreak" | "affair" | "abusive_past"
+    currentRomanticStatus: "none" | "attracted" | "dating" | "engaged" | "married" | "seperated" | "divorced" | "complicated"
+    sexualAttraction: number // -1 - 1
+    trustLevel: number; // -1 = suspicious 0 = unknown 1 = trusted
+    jelousyLevel: number; // 0 - 1
+    powerDynamic: "equal" | "dominant" | "submissive"
+    sharedTrauma: boolean
+    hasChildrenWith: boolean;
+    owedFavor: boolean;
+    desireToImpress: number; // 0 - 1
+    relationshipType: RelationshipType;
+}
+
+export interface AgentFamily {
+    hasParents: boolean;
+    parentRelationship: "good" | "estranged" | "abusive" | "deceased"
+    hasSiblings: boolean;
+    partner?: KnownAgent
+    children?: KnownAgent[];
+}
+
+export interface AgentHousing {
+    housingStatus: "homeless" | "shelter" | "renting" | "owning" | "squatting" | "couch_surfing"
+    district: string;
+    monthlyRent: number;
+    daysUntilEviction?: number;
+    roomates: KnownAgent[]
+}
+
+export interface AgentGoals {
+    shortTermGoal: string;
+    longTermGoal: string;
+    coreValue: string
+    moralCode: string
+    wouldKillFor: string[];
+    wouldDieFor: string[];
+}
+
+export interface AgentRelations {
+    knownAgents: KnownAgent[];
+    gangId?: string;
+    reputation: number; // -1 = wanted 0 = doesnt matter 1 = popular
+}
+
 
 export interface EnvironmentObject {
     id: string;
@@ -132,11 +316,24 @@ export interface SimulationEnvironment {
     district: string;
     crimeRate: number; // 0 = no crimes 1 = very criminal
     policePresence: number; // 0 = no police 1 = highly alarmed police
-    nearbyAgents: {agentId: string;
-    distance: number;
-    attitude: "friendly" | "neutral" | "hostile"}[]
+    nearbyAgents: NearbyAgent[];
     nearbyObjects: EnvironmentObject[]
     activeEvents: string[]
+}
+
+
+export interface NearbyAgent {
+    name: string;
+    age: number;
+    gender: "male" | "female" | "other";
+    visibleWeapon: boolean;
+    attitude: "friendly" | "neutral" | "hostile"
+    bodyLanguage: "aggressive" | "nervous" | "calm" | "drunk" | "crying" | "threatening" | "threatened"
+    isKnownToAgent: boolean;
+    apparentHealth: "healthy" | "injured" | "dying"
+    apparentWealthLevel: "homeless" | "poor" | "middle" | "wealthy"
+    groupSize: number;
+    isDistracted: boolean;
 }
 
 export interface AgentDecision {
@@ -148,7 +345,7 @@ export interface AgentDecision {
     alternativeConsidered?: string;
 }
 
-export interface LLMPromptContext{
+export interface LLMPromptContext {
     agent: Agent;
     environment: SimulationEnvironment;
     triggerReason: string;

@@ -1,9 +1,9 @@
-import type {Agent, AgentDecision, LLMPromptContext} from "../types/agent.ts";
-import {buildSystemPrompt, buildUserPrompt, parseDecision, checkThresholds} from "./promptGenerator.ts";
+import type { AgentDecision, LLMPromptContext} from "../types/agent.ts";
+import {buildSystemPrompt, buildUserPrompt, parseDecision} from "./promptGenerator.ts";
 
 
 const OLLAMA_BASE_URL = "http://localhost:11434"
-const DEFAULT_MODEL = "dolphin-llama3"
+const DEFAULT_MODEL = "superdrew100/llama3-abliterated"
 const MAX_RETRIES = 3
 
 async function callOllama(messages: {
@@ -36,7 +36,10 @@ async function callOllama(messages: {
 }
 
 export async function requestDecision(ctx: LLMPromptContext): Promise<AgentDecision> {
-    const messages = [{role: "system", content: buildSystemPrompt()}, {role: "user", content: buildUserPrompt(ctx)}]
+    const messages = [
+        {role: "system" as const, content: buildSystemPrompt()},
+        {role: "user" as const, content: buildUserPrompt(ctx)}
+    ]
     for (let i = 0; i < MAX_RETRIES; i++) {
         try {
             const rawResponse = await callOllama(messages);
