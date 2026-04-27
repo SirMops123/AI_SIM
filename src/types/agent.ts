@@ -277,7 +277,7 @@ export interface AgentHousing {
     district: string;
     monthlyRent: number;
     daysUntilEviction?: number;
-    roomates: KnownAgent[]
+    roommates: KnownAgent[]
 }
 
 export interface AgentGoals {

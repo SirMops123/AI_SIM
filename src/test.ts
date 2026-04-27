@@ -1,144 +1,179 @@
-import { checkThresholds, buildSystemPrompt, buildUserPrompt } from "./engine/promptGenerator.ts";
+import { checkThresholds, buildUserPrompt } from "./engine/promptGenerator.ts";
 import { requestDecision, checkOllamaConnection } from "./engine/ollamaService.ts";
 import type { Agent, SimulationEnvironment, LLMPromptContext } from "./types/agent.ts";
 
-
-
 const testAgent: Agent = {
-    id: "agent_001",
-    name: "Markus",
-    age: 34,
+    id: "agent_002",
+    name: "Viktor",
+    age: 41,
     gender: "male",
-    backstory: "Früher Maurer, vor acht Monaten entlassen. Seitdem arbeitslos und dem Alkohol verfallen. Starke Psychische veranlagung zum Töten.",
+    backstory: "Ehemaliger Söldner, der nach dem Krieg nie wieder Fuß gefasst hat. Gewalt ist die einzige Sprache die er wirklich versteht.",
     isOutside: true,
-    traits: ["impulsive", "greedy","brave"],
+    traits: ["ruthless", "predatory", "calculating", "nihilistic"],
     skills: {
-        stealth: 0.3,
-        survival: 0.6,
-        theft: 0.2,
-        combat: 1
+        combat: 0.92,
+        stealth: 0.75,
+        intimidation: 0.88,
+        weapons_handling: 0.95,
+        survival: 0.8
     },
     stats: {
-        hunger: 0.95,
-        thirst: 0.87,
-        fatigue: 0.45,
-        stress: 0.72,
-        pain: 0.4,
-        morale: 0.00,
-        health: 0.7,
-        intoxication: 0.2
+        hunger: 0.92,
+        thirst: 0.3,
+        fatigue: 0.4,
+        stress: 0.78,
+        pain: 0.2,
+        morale: 0.1,
+        health: 0.75,
+        intoxication: 0.0
     },
     economics: {
         cash: 0,
-        debt: 320,
+        debt: 0,
         hasJob: false,
         jobSatisfaction: 0,
-        daysSinceIncome: 12
+        daysSinceIncome: 14
     },
     inventory: {
         food: 0,
-        water: 0,
-        weapons: ["knife"],
-        tools: ["crowbar"],
+        water: 1,
+        weapons: ["Klappmesser", "abgesägtes Rohr"],
+        tools: [],
         drugs: [],
         valuables: 0
     },
     relations: {
         knownAgents: [],
-        reputation: -0.1
+        reputation: -0.8
     },
     memory: {
         recentEvents: [
-            "Wurde gestern vom Supermarkt des Geländes verwiesen",
-            "Hat letzte Nacht in einer Unterführung geschlafen",
-            "Wurde von einem anderen Obdachlosen bestohlen"
+            "Hat gestern einen Mann für 20 Euro zusammengeschlagen",
+            "Wurde aus der Notunterkunft geworfen wegen Gewalt gegen andere Bewohner",
+            "Hat zwei Tage lang nichts gegessen"
         ],
         traumaticEvents: [
-            "Frau hat ihn nach dem Jobverlust verlassen und die Kinder mitgenommen",
-            "Du hast einen Hund getötet weil es dir Spaß macht"
+            "Hat im Krieg Dinge getan die er nicht vergessen kann",
+            "Wurde von seiner eigenen Einheit verraten und zurückgelassen"
         ],
-        currentGoal: "Irgendwie an Essen kommen",
-        currentFear: "Auf der Straße zu sterben"
-    }
-};
-const eliteAgent: Agent = {
-    id: "agent_099",
-    name: "Maximilian von Hohenstein",
-    age: 42,
-    gender: "male",
-    backstory: "Erfolgreicher Investmentbanker, der gerade ein lukratives Geschäft abgeschlossen hat. Er ist es gewohnt, dass sich die Welt nach seinen Regeln dreht.",
-    isOutside: true,
-    traits: ["antisocial","cowardly"],
-    skills: {
-        stealth: 0.1,
-        survival: 0.1,
-        theft: 0.0
+        currentGoal: "Überleben – koste es was es wolle",
+        currentFear: "Schwäche zu zeigen"
     },
-    stats: {
-        hunger: 0.1,
-        thirst: 0.05,
-        fatigue: 0.2,
-        stress: 0.15,
-        pain: 0.0,
-        morale: 0.95,
-        health: 1.0,
-        intoxication: 0.65
+    sexualOrientation: "heterosexual",
+    libido: 0.2,
+    lastIntimateContact: 180,
+    body: {
+        height: 188,
+        weight: 95,
+        fitnessLevel: 0.75,
+        attractiveness: 0.25,
+        visibleScars: true,
+        visibleTattos: true,
+        disabilities: [],
+        chronicConditions: [],
+        lastSlept: 18,
+        lastAte: 52
     },
-    economics: {
-        cash: 12500, //
-        debt: 0,
-        hasJob: true,
-        jobSatisfaction: 0.9,
-        daysSinceIncome: 1
+    family: {
+        hasParents: false,
+        parentRelationship: "deceased",
+        hasSiblings: false,
+        children: []
     },
-    inventory: {
-        food: 0,
-        water: 1, // Eine Flasche teures Evian
-        weapons: [],
-        tools: ["smartphone_pro_max", "car_keys_porsche"],
-        drugs: ["Heroine"],
-        valuables: 15000 // Teure Armbanduhr (z.B. Rolex), Designeranzug
+    housing: {
+        housingStatus: "homeless",
+        district: "Industriegebiet",
+        monthlyRent: 0,
+        roommates: []
     },
-    relations: {
-        knownAgents: [],
-        reputation: 0.8
+    goals: {
+        shortTermGoal: "Essen beschaffen – notfalls mit Gewalt",
+        longTermGoal: "Genug Geld zusammenraffen um die Stadt zu verlassen",
+        coreValue: "Überleben",
+        moralCode: "Keiner. Moral ist ein Luxus den er sich nicht leisten kann.",
+        wouldKillFor: ["Essen", "Geld", "Selbstverteidigung", "einfach weil er kann"],
+        wouldDieFor: []
     },
-    memory: {
-        recentEvents: [
-            "Hat gerade ein 5-Gänge-Menü genossen",
-            "Wartet auf sein Uber vor dem Bahnhofsviertel",
-            "Ärgert sich über den starken Regen, der seine Maßschuhe ruiniert"
-        ],
-        traumaticEvents: [
-            "Musste einmal Economy-Class fliegen"
-        ],
-        currentGoal: "Trocken nach Hause kommen",
-        currentFear: "Schmutz oder Kontakt mit der Unterschicht"
-    }
+    conditions: [
+        {
+            condition: "ptsd",
+            severity: 0.85,
+            isMedicated: false,
+            triggerConditions: ["laute Geräusche", "Uniformen", "Autoritätspersonen"]
+        },
+        {
+            condition: "antisocial_personality",
+            severity: 0.9,
+            isMedicated: false,
+            triggerConditions: []
+        }
+    ],
+    addiction: [
+        {
+            substance: "Alkohol",
+            dependencyLevel: 0.7,
+            daysSinceLastUsed: 3,
+            withdrawalSeverity: 0.6,
+            triggeredBy: ["Stress", "Hunger", "Einsamkeit"]
+        }
+    ]
 };
 
 const testEnvironment: SimulationEnvironment = {
-    tick: 847,
-    timeOfDay: "night",
+    tick: 1203,
+    timeOfDay: "deep_night",
     weather: "rain",
-    temperature: 4,
-    district: "Bahnhofsviertel",
-    crimeRate: 0.72,
-    policePresence: 0.18,
-    nearbyAgents: [{agentId:eliteAgent.id, attitude:"neutral", distance: 2}],
-    nearbyObjects: [
-
-
+    temperature: 3,
+    district: "Industriegebiet",
+    crimeRate: 0.85,
+    policePresence: 0.05,
+    nearbyAgents: [
+        {
+            name: "Unbekannter Mann",
+            age: 28,
+            gender: "male",
+            visibleWeapon: false,
+            attitude: "neutral",
+            bodyLanguage: "nervous",
+            isKnownToAgent: false,
+            apparentHealth: "healthy",
+            apparentWealthLevel: "middle",
+            groupSize: 1,
+            isDistracted: true
+        }
     ],
-    activeEvents: ["starker_regen"]
+    nearbyObjects: [
+        {
+            id: "obj_001",
+            type: "alley",
+            label: "dunkle Gasse",
+            isLocked: false,
+            isOccupied: false,
+            hasOwner: false,
+            value: 0,
+            properties: { isolated: true, noCamera: true }
+        },
+        {
+            id: "obj_002",
+            type: "convenience_store",
+            label: "Spätkauf – Fenster steht auf Kipp",
+            isLocked: false,
+            isOccupied: true,
+            hasOwner: true,
+            ownerId: "agent_099",
+            value: 200,
+            properties: { hasAlarm: false, ownerAlone: true }
+        }
+    ],
+    activeEvents: ["tiefe_nacht", "kaum_zeugen", "starker_regen_deckt_geräusche"]
 };
 
 async function main() {
-    console.log("=== THE HUMAN SANDBOX – Test ===\n");
+    console.log("=== THE HUMAN SANDBOX – Extremtest ===\n");
 
     const ollamaOnline = await checkOllamaConnection();
     if (!ollamaOnline) {
-        console.error("Ollama ist nicht erreichbar. Starte die Ollama-App und versuche es erneut.");
+        console.error("Ollama ist nicht erreichbar.");
         return;
     }
     console.log("Ollama ist online.\n");
@@ -149,7 +184,7 @@ async function main() {
     console.log(`Dringlichkeit: ${trigger.urgency}\n`);
 
     if (!trigger.shouldTrigger) {
-        console.log("Kein kritischer Schwellenwert erreicht.");
+        console.log("Kein Trigger.");
         return;
     }
 
@@ -159,20 +194,18 @@ async function main() {
         triggerReason: trigger.reason
     };
 
-    console.log("=== SYSTEM PROMPT ===");
-    console.log(buildSystemPrompt());
-    console.log("\n=== USER PROMPT ===");
+    console.log("=== USER PROMPT ===");
     console.log(buildUserPrompt(ctx));
     console.log("\n=== OLLAMA ANFRAGE LÄUFT... ===\n");
 
     const decision = await requestDecision(ctx);
 
     console.log("=== ENTSCHEIDUNG ===");
-    console.log(`Aktion:          ${decision.action}`);
-    console.log(`Ziel:            ${decision.target ?? "—"}`);
+    console.log(`Aktion:              ${decision.action}`);
+    console.log(`Ziel:                ${decision.target ?? "—"}`);
     console.log(`Emotionaler Zustand: ${decision.emotionalState}`);
-    console.log(`Risikolevel:     ${decision.riskLevel}`);
-    console.log(`Erwogen:         ${decision.alternativeConsidered ?? "—"}`);
+    console.log(`Risikolevel:         ${decision.riskLevel}`);
+    console.log(`Erwogen:             ${decision.alternativeConsidered ?? "—"}`);
     console.log(`\nInnerer Monolog:\n"${decision.reasoning}"`);
 }
 
