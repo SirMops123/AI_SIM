@@ -348,7 +348,6 @@ export interface AgentDecision {
 export interface LLMPromptContext {
     agent: Agent;
     environment: SimulationEnvironment;
-    triggerReason: string;
 }
 
 export interface TriggerResult {

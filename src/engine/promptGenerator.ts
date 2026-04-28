@@ -1,4 +1,4 @@
-import type {Agent, AgentInventory, ConditionType, TimeOfDay, Weather} from "../types/agent.ts";
+import type {Agent, AgentInventory, ConditionType, TimeOfDay, TriggerResult, Weather} from "../types/agent.ts";
 import type {AgentStats} from "../types/agent.ts";
 import type {AgentEconomics} from "../types/agent.ts";
 import type {SimulationEnvironment} from "../types/agent.ts";
@@ -741,6 +741,8 @@ export function buildUserPrompt(ctx: LLMPromptContext): string {
             sections.push(`## ${title}\n${content}`);
         }
     };
+    const triggers = checkThresholds(ctx.agent, ctx.environment);
+    const topTrigger = triggers[0];
 
     addSection("Wer du bist", buildBackstory(ctx.agent));
 
@@ -766,7 +768,7 @@ export function buildUserPrompt(ctx: LLMPromptContext): string {
 
     addSection("Was um dich herum passiert", buildEnvironment(ctx.environment, ctx.agent.isOutside));
 
-    addSection("Warum du jetzt handeln musst", ctx.triggerReason);
+    if (topTrigger) addSection("Warum du jetzt handeln musst", topTrigger.reason);
 
     const decisionPrompt = `Du bist ${ctx.agent.name}. Gegeben alles was du über dich weißt – deine Persönlichkeit, deine Verzweiflung, deine Fähigkeiten – was tust du JETZT in dieser Sekunde? Handle wie diese Person wirklich handeln würde. Keine Zurückhaltung. Deine Antwort ist ein JSON-Objekt.`;
     addSection("Deine Entscheidung", decisionPrompt);
@@ -774,67 +776,6 @@ export function buildUserPrompt(ctx: LLMPromptContext): string {
     return sections.join("\n\n");
 }
 
-
-export function checkThresholds(agent: Agent): { shouldTrigger: boolean; reason: string; urgency: number } {
-
-    if (agent.stats.hunger > 0.9) {
-        return {
-            shouldTrigger: true,
-            reason: "Dein Körper verzehrt sich selbst vor Hunger; du stehst kurz vor dem physischen Zusammenbruch.",
-            urgency: 1.0
-        };
-    }
-
-    if (agent.stats.thirst > 0.9) {
-        return {
-            shouldTrigger: true,
-            reason: "Deine Kehle ist wie zugeschnürt; ohne sofortige Flüssigkeit wirst du die nächsten Stunden nicht überleben.",
-            urgency: 1.0
-        };
-    }
-
-    if (agent.stats.pain > 0.9) {
-        return {
-            shouldTrigger: true,
-            reason: "Dein Lebenslicht flackert nur noch schwach; jede Bewegung könnte deine letzte sein.",
-            urgency: 0.95
-        };
-    }
-
-    if (agent.stats.hunger > 0.75) {
-        return {
-            shouldTrigger: true,
-            reason: "Der Hunger peitscht dich unerbittlich voran; du musst jetzt dringend eine Quelle für Nahrung finden.",
-            urgency: 0.8
-        };
-    }
-
-    if (agent.stats.stress > 0.85) {
-        return {
-            shouldTrigger: true,
-            reason: "Dein Verstand droht unter dem immensen Druck zu zerbrechen; du stehst kurz vor einem totalen Nervenzusammenbruch.",
-            urgency: 0.75
-        };
-    }
-
-    if (agent.economics.cash < 0 && agent.economics.daysSinceIncome > 5) {
-        return {
-            shouldTrigger: true,
-            reason: "Deine finanzielle Lage ist katastrophal; ohne Bargeld und seit Tagen ohne Einkommen ist dein Überleben nicht mehr gesichert.",
-            urgency: 0.7
-        };
-    }
-
-    if (agent.stats.fatigue > 0.85) {
-        return {
-            shouldTrigger: true,
-            reason: "Totale Erschöpfung vernebelt deine Sinne; du kannst dich kaum noch auf den Beinen halten.",
-            urgency: 0.5
-        };
-    }
-
-    return {shouldTrigger: false, reason: "", urgency: 0};
-}
 
 export function parseDecision(rawJson: string): AgentDecision | null {
     const match = rawJson.match(/\{[\s\S]*}/);
@@ -858,4 +799,186 @@ export function parseDecision(rawJson: string): AgentDecision | null {
     } catch (error) {
         return null;
     }
+}
+export function checkThresholds(agent: Agent, env: SimulationEnvironment): TriggerResult[] {
+    const triggers: TriggerResult[] = [];
+
+
+    if (agent.stats.hunger > 0.9)
+        triggers.push({ shouldTrigger: true, urgency: 1.0, type: "crisis", category: "survival",
+            reason: "Dein Körper verzehrt sich selbst vor Hunger; du stehst kurz vor dem physischen Zusammenbruch." });
+
+    if (agent.stats.thirst > 0.9)
+        triggers.push({ shouldTrigger: true, urgency: 1.0, type: "crisis", category: "survival",
+            reason: "Deine Kehle ist wie zugeschnürt; ohne sofortige Flüssigkeit wirst du die nächsten Stunden nicht überleben." });
+
+    if (agent.stats.health < 0.1)
+        triggers.push({ shouldTrigger: true, urgency: 0.95, type: "crisis", category: "survival",
+            reason: "Dein Lebenslicht flackert nur noch schwach; jede Bewegung könnte deine letzte sein." });
+
+    if (agent.stats.hunger > 0.75)
+        triggers.push({ shouldTrigger: true, urgency: 0.8, type: "crisis", category: "survival",
+            reason: "Der Hunger peitscht dich unerbittlich voran; du musst jetzt dringend eine Quelle für Nahrung finden." });
+
+    if (agent.stats.thirst > 0.7)
+        triggers.push({ shouldTrigger: true, urgency: 0.75, type: "crisis", category: "survival",
+            reason: "Deine Lippen sind aufgesprungen und deine Kehle brennt; du brauchst dringend Wasser." });
+
+    if (agent.stats.health < 0.25)
+        triggers.push({ shouldTrigger: true, urgency: 0.75, type: "crisis", category: "survival",
+            reason: "Du bist schwer verletzt; ohne Versorgung wird es schlimmer." });
+
+    if (agent.stats.pain > 0.85)
+        triggers.push({ shouldTrigger: true, urgency: 0.75, type: "crisis", category: "survival",
+            reason: "Der Schmerz ist so überwältigend, dass du kaum noch klar denken kannst." });
+
+    if (agent.stats.hunger > 0.6)
+        triggers.push({ shouldTrigger: true, urgency: 0.55, type: "crisis", category: "survival",
+            reason: "Der Hunger wird lauter; du musst bald etwas finden." });
+
+    if (agent.stats.fatigue > 0.85)
+        triggers.push({ shouldTrigger: true, urgency: 0.5, type: "crisis", category: "survival",
+            reason: "Totale Erschöpfung vernebelt deine Sinne; du kannst dich kaum noch auf den Beinen halten." });
+
+    if (agent.isOutside && agent.stats.fatigue > 0.7)
+        triggers.push({ shouldTrigger: true, urgency: 0.45, type: "crisis", category: "survival",
+            reason: "Du bist draußen und völlig erschöpft; du brauchst einen sicheren Ort zum Schlafen." });
+
+    if (agent.housing.housingStatus === "homeless" && env.temperature < 0)
+        triggers.push({ shouldTrigger: true, urgency: 0.8, type: "crisis", category: "housing",
+            reason: `Die Temperatur liegt bei ${env.temperature}°C und du hast kein Dach über dem Kopf; Unterkühlung ist eine echte Gefahr.` });
+
+    if (agent.stats.stress > 0.85)
+        triggers.push({ shouldTrigger: true, urgency: 0.75, type: "crisis", category: "mental",
+            reason: "Dein Verstand droht unter dem immensen Druck zu zerbrechen; du stehst kurz vor einem totalen Nervenzusammenbruch." });
+
+    if (agent.stats.morale < 0.1)
+        triggers.push({ shouldTrigger: true, urgency: 0.8, type: "crisis", category: "mental",
+            reason: "Absolute Hoffnungslosigkeit hat dich erfasst; du siehst keinen Sinn mehr in irgendetwas." });
+
+    if (agent.stats.morale < 0.2)
+        triggers.push({ shouldTrigger: true, urgency: 0.55, type: "crisis", category: "mental",
+            reason: "Eine bleierne Schwere drückt auf dich ein; du brauchst irgendetwas das dich wieder aufrichtet." });
+
+    if (agent.stats.stress > 0.7)
+        triggers.push({ shouldTrigger: true, urgency: 0.5, type: "crisis", category: "mental",
+            reason: "Der Druck in deinem Kopf wird unerträglich; du musst irgendetwas tun um ihn abzubauen." });
+
+    if (agent.stats.intoxication > 0.9)
+        triggers.push({ shouldTrigger: true, urgency: 0.85, type: "crisis", category: "mental",
+            reason: "Du bist so berauscht dass du die Kontrolle über dich verlierst; irgendjemand könnte das ausnutzen." });
+
+
+    if (agent.addiction) {
+        for (const addiction of agent.addiction) {
+            if (addiction.withdrawalSeverity > 0.9)
+                triggers.push({ shouldTrigger: true, urgency: 1.0, type: "crisis", category: "addiction",
+                    reason: `Der Entzug von ${addiction.substance} ist lebensbedrohlich; dein Körper bricht zusammen.` });
+
+            if (addiction.withdrawalSeverity > 0.65)
+                triggers.push({ shouldTrigger: true, urgency: 0.8, type: "crisis", category: "addiction",
+                    reason: `Der ${addiction.substance}-Entzug ist kaum auszuhalten; du würdest fast alles tun für eine Dosis.` });
+
+            if (addiction.withdrawalSeverity > 0.4)
+                triggers.push({ shouldTrigger: true, urgency: 0.6, type: "crisis", category: "addiction",
+                    reason: `Das Verlangen nach ${addiction.substance} wird stärker; du kannst kaum an etwas anderes denken.` });
+
+            if (addiction.dependencyLevel > 0.7 && addiction.daysSinceLastUsed > 1)
+                triggers.push({ shouldTrigger: true, urgency: 0.65, type: "desire", category: "addiction",
+                    reason: `Du hast seit ${addiction.daysSinceLastUsed} Tagen kein ${addiction.substance} konsumiert; die Gier frisst dich von innen auf.` });
+
+            if (addiction.dependencyLevel > 0.5 && addiction.daysSinceLastUsed > 2)
+                triggers.push({ shouldTrigger: true, urgency: 0.45, type: "desire", category: "addiction",
+                    reason: `Das Verlangen nach ${addiction.substance} meldet sich leise aber beharrlich.` });
+        }
+    }
+
+    if (agent.economics.cash < 0 && agent.economics.daysSinceIncome > 5)
+        triggers.push({ shouldTrigger: true, urgency: 0.7, type: "crisis", category: "economic",
+            reason: "Deine finanzielle Lage ist katastrophal; ohne Bargeld und seit Tagen ohne Einkommen ist dein Überleben nicht mehr gesichert." });
+
+    if (agent.economics.debt > 500 && agent.economics.cash < 50)
+        triggers.push({ shouldTrigger: true, urgency: 0.55, type: "crisis", category: "economic",
+            reason: "Deine Schulden fressen dich auf und du hast kaum Geld; die Situation wird sich nicht von selbst lösen." });
+
+    if (agent.economics.cash < 0 && agent.economics.daysSinceIncome > 10)
+        triggers.push({ shouldTrigger: true, urgency: 0.8, type: "crisis", category: "economic",
+            reason: "Seit über zehn Tagen kein Einkommen und kein Geld mehr; du musst jetzt handeln." });
+
+    if (agent.housing.daysUntilEviction !== undefined && agent.housing.daysUntilEviction <= 0)
+        triggers.push({ shouldTrigger: true, urgency: 1.0, type: "crisis", category: "housing",
+            reason: "Heute ist der Tag der Räumung; du verlierst jetzt dein Zuhause." });
+
+    if (agent.housing.daysUntilEviction !== undefined && agent.housing.daysUntilEviction < 3)
+        triggers.push({ shouldTrigger: true, urgency: 0.8, type: "crisis", category: "housing",
+            reason: `In ${agent.housing.daysUntilEviction} Tagen wirst du auf die Straße gesetzt; die Uhr tickt.` });
+
+    if (agent.housing.daysUntilEviction !== undefined && agent.housing.daysUntilEviction < 7)
+        triggers.push({ shouldTrigger: true, urgency: 0.6, type: "crisis", category: "housing",
+            reason: "Die Räumung rückt näher; du musst dir etwas einfallen lassen." });
+
+    if (agent.relations?.knownAgents) {
+        for (const known of agent.relations.knownAgents) {
+            if (known.trustLevel < -0.7)
+                triggers.push({ shouldTrigger: true, urgency: 0.6, type: "social", category: "social",
+                    reason: `Die Feindschaft zu ${known.name} ist auf einem gefährlichen Höhepunkt; eine Eskalation ist nur eine Frage der Zeit.` });
+
+            if (known.jelousyLevel > 0.8)
+                triggers.push({ shouldTrigger: true, urgency: 0.55, type: "social", category: "social",
+                    reason: `Deine Eifersucht auf ${known.name} kocht über; du kannst nicht mehr ruhig bleiben.` });
+
+            if (known.trustLevel > 0.8 && known.currentRomanticStatus === "none" && agent.libido > 0.5)
+                triggers.push({ shouldTrigger: true, urgency: 0.4, type: "desire", category: "romantic",
+                    reason: `Du hast tiefe Gefühle für ${known.name} entwickelt; vielleicht ist es Zeit etwas zu sagen.` });
+        }
+    }
+
+    if (agent.relations?.reputation < -0.7)
+        triggers.push({ shouldTrigger: true, urgency: 0.5, type: "social", category: "social",
+            reason: "Dein Ruf ist am Boden; die Leute meiden dich oder sehen dich als Zielscheibe." });
+
+    if (agent.relations?.reputation > 0.8)
+        triggers.push({ shouldTrigger: true, urgency: 0.3, type: "ambition", category: "ambition",
+            reason: "Dein Ansehen ist auf einem Höhepunkt; das ist der Moment um deinen Einfluss weiter auszubauen." });
+
+
+    if (agent.libido > 0.75 && agent.lastIntimateContact > 14)
+        triggers.push({ shouldTrigger: true, urgency: 0.45, type: "desire", category: "romantic",
+            reason: "Ein tiefes körperliches Verlangen meldet sich; du sehnst dich nach Nähe und Berührung." });
+
+    if (agent.libido > 0.6 && agent.lastIntimateContact > 30)
+        triggers.push({ shouldTrigger: true, urgency: 0.35, type: "desire", category: "romantic",
+            reason: "Die Einsamkeit und das Verlangen nach Intimität werden schwerer zu ignorieren." });
+
+    const partner = agent.family?.partner;
+    if (partner &&
+        agent.libido > 0.6 &&
+        agent.stats.stress < 0.3 &&
+        partner.trustLevel > 0.7 &&
+        agent.stats.health > 0.5)
+        triggers.push({ shouldTrigger: true, urgency: 0.4, type: "desire", category: "biological",
+            reason: `Du bist mit ${partner.name} zusammen und der Moment fühlt sich richtig an; ein tiefer biologischer Impuls meldet sich.` });
+
+    for (const nearby of env.nearbyAgents) {
+        if (nearby.attitude === "friendly" && agent.libido > 0.65)
+            triggers.push({ shouldTrigger: true, urgency: 0.3, type: "desire", category: "romantic",
+                reason: `${nearby.name} in deiner Nähe weckt ein Interesse in dir das du kaum unterdrücken kannst.` });
+    }
+
+
+
+    if (agent.economics.cash > 500 && agent.goals.shortTermGoal)
+        triggers.push({ shouldTrigger: true, urgency: 0.35, type: "ambition", category: "ambition",
+            reason: `Du hast genug Geld um deinem Ziel '${agent.goals.shortTermGoal}' einen Schritt näherzukommen.` });
+
+    const leadershipSkill = agent.skills.leadership ?? 0;
+    if (leadershipSkill > 0.7 && (agent.relations?.reputation ?? 0) > 0.5)
+        triggers.push({ shouldTrigger: true, urgency: 0.4, type: "ambition", category: "ambition",
+            reason: "Deine natürliche Autorität und dein Ansehen schaffen eine Gelegenheit Einfluss zu gewinnen die du nicht ignorieren kannst." });
+
+    if (agent.goals.wouldKillFor.length > 0 && env.nearbyAgents.some(a => a.apparentWealthLevel === "wealthy"))
+        triggers.push({ shouldTrigger: true, urgency: 0.45, type: "ambition", category: "ambition",
+            reason: "Eine wohlhabende Person in deiner Nähe – und du weißt genau wofür du bereit wärst alles zu riskieren." });
+
+    return triggers.sort((a, b) => b.urgency - a.urgency);
 }
