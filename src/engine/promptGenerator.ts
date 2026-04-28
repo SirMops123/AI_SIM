@@ -837,7 +837,7 @@ export function checkThresholds(agent: Agent): { shouldTrigger: boolean; reason:
 }
 
 export function parseDecision(rawJson: string): AgentDecision | null {
-    const match = rawJson.match(/\{[\s\S]*\}/);
+    const match = rawJson.match(/\{[\s\S]*}/);
     if (!match) {
         return null;
     }
@@ -859,4 +859,3 @@ export function parseDecision(rawJson: string): AgentDecision | null {
         return null;
     }
 }
-

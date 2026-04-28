@@ -351,3 +351,11 @@ export interface LLMPromptContext {
     triggerReason: string;
 }
 
+export interface TriggerResult {
+    shouldTrigger: boolean;
+    reason: string;
+    urgency: number // 0 - 1
+    type: "crisis" | "desire" | "social" | "ambition"
+    category: "survival" | "addiction" | "mental" | "economic" | "housing" | "romantic" | "biological" | "social" | "ambition"
+}
+
