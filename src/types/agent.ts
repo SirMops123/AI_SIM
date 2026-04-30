@@ -193,6 +193,7 @@ export interface AgentEconomics {
 export interface AgentInventory {
     food: number;
     water: number;
+    cashOnHand:number;
     weapons: string[];
     tools: string[];
     drugs: string[];
@@ -323,6 +324,7 @@ export interface SimulationEnvironment {
 
 
 export interface NearbyAgent {
+    id?: string;
     name: string;
     age: number;
     gender: "male" | "female" | "other";
