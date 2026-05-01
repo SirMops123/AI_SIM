@@ -307,6 +307,7 @@ export interface EnvironmentObject {
     ownerId?: string;
     value: number;
     properties: Record<string, unknown>
+    inventory?: Partial<AgentInventory>
 }
 
 export interface SimulationEnvironment {

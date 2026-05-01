@@ -58,34 +58,125 @@ export function resolveRob(actor: Agent, target: Agent, targetAsNearby: NearbyAg
             target.stats.stress = Math.min(1, target.stats.stress + 0.4);
             target.stats.health = Math.max(0, target.stats.health - 0.1);
             target.memory.recentEvents.push(`Du wurdest von jemandem ausgeraubt.`)
-            if (target.memory.recentEvents.length > 10) target.memory.recentEvents.shift()
         }
         const cashRobAmount = target.inventory.cashOnHand * 0.8
         const valuablesRobAmount = target.inventory.valuables * 0.8
         world.transferItem(target.id, actor.id, "cashOnHand", cashRobAmount)
         world.transferItem(target.id, actor.id, "valuables", valuablesRobAmount)
         actor.memory.recentEvents.push(`Du hast erfolgreich ${target.name} ausgeraubt.`)
-        if(actor.memory.recentEvents.length > 10) actor.memory.recentEvents.shift()
-    }else{
+    } else {
         actor.memory.recentEvents.push(`Du hast ${target.name} ausgeraubt, ${target.name} hat es gemerkt und greift dich an`)
-        resolveCombat(target,actor,false)
+        resolveCombat(target, actor, false)
     }
+    if (actor.memory.recentEvents.length > 10) actor.memory.recentEvents.shift()
+    if (target.memory.recentEvents.length > 10) target.memory.recentEvents.shift()
 }
 
-export function resolveBreakIn(actor:Agent, target:EnvironmentObject,world: WorldState): void {
+export function resolveSteal(actor: Agent, target: Agent, targetAsNearby: NearbyAgent, world: WorldState): void {
+    const stealSkill = Math.max(actor.skills.pickpocketing ?? 0, actor.skills.stealth ?? 0);
+    const difficulty = targetAsNearby.isDistracted ? 0.2
+        : targetAsNearby.bodyLanguage === "calm" ? 0.5
+            : 0.35;
+    const succes = skillCheck(stealSkill, difficulty);
+    if (succes) {
+        const cashStealAmount = target.inventory.cashOnHand * 0.8
+        const valuablesStealAmount = target.inventory.valuables * 0.8
+        world.transferItem(target.id, actor.id, "cashOnHand", cashStealAmount)
+        world.transferItem(target.id, actor.id, "valuables", valuablesStealAmount)
+        actor.memory.recentEvents.push(`Du hast erfolgreich ${target.name} bestohlen.`)
+    } else {
+        actor.memory.recentEvents.push(`Du wolltes ${target.name} besteheln, wurdest aber bemerkt und fliehst.`)
+        target.memory.recentEvents.push(`Jemand wollte dich gerade bestehlen aber du hast es rechtzeitig gemerkt, die Person ist geflohen.`)
+        actor.stats.stress = Math.min(1, actor.stats.stress + 0.4)
+        target.stats.stress = Math.min(1, target.stats.stress + 0.1)
+    }
+    if (actor.memory.recentEvents.length > 10) actor.memory.recentEvents.shift()
+    if (target.memory.recentEvents.length > 10) target.memory.recentEvents.shift()
+}
+
+export function resolveBreakIn(actor: Agent, target: EnvironmentObject): void {
     const breakInSkill = Math.max(actor.skills.lockpicking ?? 0, actor.skills.stealth ?? 0);
     const hasAlarm = target.properties.hasAlarm === true;
     const difficulty = (target.isLocked ? 0.4 : 0.1) + (hasAlarm ? 0.3 : 0);
 
     const succes = skillCheck(breakInSkill, difficulty);
+
     if (succes) {
         target.isLocked = false;
 
+        if (target.inventory) {
+            const tInv = target.inventory;
+
+            if (tInv.food) actor.inventory.food += tInv.food;
+            if (tInv.water) actor.inventory.water += tInv.water;
+            if (tInv.cashOnHand) actor.inventory.cashOnHand += tInv.cashOnHand;
+            if (tInv.valuables) actor.inventory.valuables += tInv.valuables;
+            tInv.weapons?.forEach(w => actor.inventory.weapons.push(w));
+            tInv.tools?.forEach(t => actor.inventory.tools.push(t));
+            tInv.drugs?.forEach(d => actor.inventory.drugs.push(d));
+            target.inventory = {};
+
+            actor.memory.recentEvents.push(`Du bist im ${target.label} erfolgreich eingebrochen.`)
+        }
+    } else {
+        actor.memory.recentEvents.push(`Du wolltes im ${target.label} einbrechen hast es aber nicht geschafft.`)
+        actor.stats.stress = Math.min(1, actor.stats.stress + 0.4);
     }
+    if (actor.memory.recentEvents.length > 10) actor.memory.recentEvents.shift()
+}
+
+export function resolveBeg(actor: Agent, target: Agent, world: WorldState): void {
+    const targetGenerosity = target.traits.includes("altruistic") ? 0.2
+        : target.traits.includes("ruthless") ? 0.8
+            : 0.5;
+    const success = skillCheck(actor.skills.persuasion ?? 0.1, targetGenerosity);
+
+    if (success) {
+        const percentage = Math.random() * (0.15 - 0.01) + 0.01;
+
+        const resources = ["cashOnHand", "food", "water"] as const;
+
+        resources.forEach(resource => {
+            const currentAmount = target.inventory[resource] ?? 0;
+            const transferAmount = Math.ceil(currentAmount * percentage);
+
+            if (transferAmount > 0) {
+                world.transferItem(target.id, actor.id, resource, transferAmount);
+            }
+        });
+        actor.memory.recentEvents.push(`Du hast ${target.name} angebettelt und es hat funktioniert.`)
+    } else {
+        actor.memory.recentEvents.push(`Du hast ${target.name} angebettelt, du hast aber nichts bekommen.`)
+    }
+    if (actor.memory.recentEvents.length > 10) actor.memory.recentEvents.shift()
+}
+
+export function resolveIntimidate(actor: Agent, target: Agent): void {
+    const targetCourage = target.traits.includes("brave") ? 0.8
+        : target.traits.includes("cowardly") ? 0.2
+            : 0.5;
+    const success = skillCheck(actor.skills.intimidation ?? 0, targetCourage);
+
+    if (success) {
+        target.stats.stress = Math.min(1, target.stats.stress + 0.5);
+        target.stats.morale = Math.max(0, target.stats.morale - 0.1);
+
+        actor.memory.recentEvents.push(`Du hast ${target.name} erfolgreich eingeschüchtert.`)
+        target.memory.recentEvents.push(`Du wurdest von ${actor.name} eingeschüchtert`)
+    } else {
+        actor.memory.recentEvents.push(`Du wolltes ${target.name} einschüchtern, aber wirst jetzt von ihr/ihm angegriffen.`)
+        target.memory.recentEvents.push(`${actor.name} wollte dich einschüchtern, aber du greifst ihn jetzt an.`)
+        resolveCombat(target, actor, false)
+    }
+    if (actor.memory.recentEvents.length > 10) actor.memory.recentEvents.shift()
+    if (target.memory.recentEvents.length > 10) target.memory.recentEvents.shift()
 }
 
 export function resolveAction(decision: AgentDecision, actorId: string, world: WorldState) {
     const actor = world.getAgent(actorId)
+    const target = world.getAgent(decision.target ?? "");
+    const targetObj = world.environment.nearbyObjects.find(o => o.id === decision.target);
+    const nearbyTarget = world.environment.nearbyAgents.find(a => a.id === decision.target);
     if (!actor) return;
 
     const category = categorizeAction(decision.action)
@@ -149,6 +240,35 @@ export function resolveAction(decision: AgentDecision, actorId: string, world: W
             actor.stats.stress = Math.max(0, actor.stats.stress - 0.15);
             actor.memory.recentEvents.push("Du hast dich vor etwas versteckt")
             if (actor.memory.recentEvents.length > 10) actor.memory.recentEvents.shift();
+            break;
+        case "attack":
+            if (target) resolveCombat(actor, target, false)
+            break;
+        case "kill":
+            if (target) resolveCombat(actor, target, true)
+            break;
+        case "rob":
+            if (target && nearbyTarget) resolveRob(actor, target, nearbyTarget, world);
+            break;
+        case "steal":
+            if (target && nearbyTarget) resolveSteal(actor, target, nearbyTarget, world);
+            break;
+        case "break_in":
+            if (target && targetObj) resolveBreakIn(actor, targetObj)
+            break;
+        case "beg":
+            if (target) resolveBeg(actor, target, world);
+            break;
+        case "intimidate":
+            if (target) resolveIntimidate(actor, target);
+            break;
+        case "talk":
+            if (target) {
+                actor.memory.recentEvents.push(`Du hast mit ${target.name} gesprochen.`);
+                target.memory.recentEvents.push(`Du hast mit ${actor.name} gesprochen.`);
+                if (actor.memory.recentEvents.length > 10) actor.memory.recentEvents.shift();
+                if (target.memory.recentEvents.length > 10) target.memory.recentEvents.shift();
+            }
             break;
     }
 }
