@@ -254,7 +254,7 @@ export function resolveAction(decision: AgentDecision, actorId: string, world: W
             if (target && nearbyTarget) resolveSteal(actor, target, nearbyTarget, world);
             break;
         case "break_in":
-            if (target && targetObj) resolveBreakIn(actor, targetObj)
+            if (targetObj) resolveBreakIn(actor, targetObj)
             break;
         case "beg":
             if (target) resolveBeg(actor, target, world);
